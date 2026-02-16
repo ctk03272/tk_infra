@@ -1,0 +1,39 @@
+name: Deploy to Mac Mini (Colima)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on:
+      - self-hosted
+      - mac-mini
+      - dev-tony
+      - colima
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure Colima and Docker context
+        shell: bash
+        run: |
+          set -euo pipefail
+          colima start || true
+          docker context use colima
+          docker info
+
+      - name: Deploy stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose pull
+          docker compose up -d --remove-orphans
+
+      - name: Verify deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose ps

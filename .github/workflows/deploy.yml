@@ -1,4 +1,4 @@
-name: Deploy to Mac Mini (Colima)
+name: Deploy Stacks to Mac Mini (Colima)
 
 on:
   push:
@@ -7,11 +7,45 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
-    runs-on: self-hosted
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+      search: ${{ steps.filter.outputs.search }}
+      workflow: ${{ steps.filter.outputs.workflow }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Detect changed stacks
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            app:
+              - 'infra/app/**'
+            search:
+              - 'infra/search/**'
+            workflow:
+              - '.github/workflows/deploy.yml'
+
+  deploy-app:
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.app == 'true' || needs.changes.outputs.workflow == 'true' }}
+    runs-on: self-hosted
+    env:
+      DOCKER_CONFIG: ${{ runner.temp }}/docker-config
+      COMPOSE_FILE_PATH: infra/app/docker-compose.yml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare Docker config for Colima
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$DOCKER_CONFIG"
+          printf '{}' > "$DOCKER_CONFIG/config.json"
 
       - name: Ensure Colima and Docker context
         shell: bash
@@ -34,15 +68,67 @@ jobs:
             exit 1
           fi
 
-      - name: Deploy stack
+      - name: Deploy app stack
         shell: bash
         run: |
           set -euo pipefail
-          $COMPOSE_CMD pull
-          $COMPOSE_CMD up -d --remove-orphans
+          $COMPOSE_CMD -f "$COMPOSE_FILE_PATH" pull
+          $COMPOSE_CMD -f "$COMPOSE_FILE_PATH" up -d --remove-orphans
 
-      - name: Verify deployment
+      - name: Verify app stack
         shell: bash
         run: |
           set -euo pipefail
-          $COMPOSE_CMD ps
+          $COMPOSE_CMD -f "$COMPOSE_FILE_PATH" ps
+
+  deploy-search:
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.search == 'true' || needs.changes.outputs.workflow == 'true' }}
+    runs-on: self-hosted
+    env:
+      DOCKER_CONFIG: ${{ runner.temp }}/docker-config
+      COMPOSE_FILE_PATH: infra/search/docker-compose.yml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare Docker config for Colima
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$DOCKER_CONFIG"
+          printf '{}' > "$DOCKER_CONFIG/config.json"
+
+      - name: Ensure Colima and Docker context
+        shell: bash
+        run: |
+          set -euo pipefail
+          colima start || true
+          docker context use colima
+          docker info
+
+      - name: Detect compose command
+        shell: bash
+        run: |
+          set -euo pipefail
+          if docker compose version >/dev/null 2>&1; then
+            echo "COMPOSE_CMD=docker compose" >> "$GITHUB_ENV"
+          elif docker-compose version >/dev/null 2>&1; then
+            echo "COMPOSE_CMD=docker-compose" >> "$GITHUB_ENV"
+          else
+            echo "Neither docker compose nor docker-compose is available."
+            exit 1
+          fi
+
+      - name: Deploy search stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          $COMPOSE_CMD -f "$COMPOSE_FILE_PATH" pull
+          $COMPOSE_CMD -f "$COMPOSE_FILE_PATH" up -d --remove-orphans
+
+      - name: Verify search stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          $COMPOSE_CMD -f "$COMPOSE_FILE_PATH" ps

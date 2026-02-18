@@ -1,4 +1,4 @@
-name: tk-infra
+name: tk-infra-app
 
 services:
   web:

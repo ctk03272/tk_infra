@@ -12,6 +12,7 @@ jobs:
     outputs:
       app: ${{ steps.filter.outputs.app }}
       search: ${{ steps.filter.outputs.search }}
+      docker: ${{ steps.filter.outputs.docker }}
       workflow: ${{ steps.filter.outputs.workflow }}
     steps:
       - name: Checkout
@@ -26,26 +27,27 @@ jobs:
               - 'infra/app/**'
             search:
               - 'infra/search/**'
+            docker:
+              - 'infra/config/**'
             workflow:
               - '.github/workflows/deploy.yml'
 
   deploy-app:
     needs: changes
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.app == 'true' || needs.changes.outputs.workflow == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.app == 'true' || needs.changes.outputs.docker == 'true' || needs.changes.outputs.workflow == 'true' }}
     runs-on: self-hosted
     env:
-      DOCKER_CONFIG: /tmp/docker-config
       COMPOSE_FILE_PATH: infra/app/docker-compose.yml
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare Docker config for Colima
+      - name: Apply Docker config from repo
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$DOCKER_CONFIG"
-          printf '{}' > "$DOCKER_CONFIG/config.json"
+          mkdir -p "$HOME/.docker"
+          cp infra/config/docker/config.json "$HOME/.docker/config.json"
 
       - name: Ensure Colima and Docker context
         shell: bash
@@ -83,21 +85,20 @@ jobs:
 
   deploy-search:
     needs: changes
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.search == 'true' || needs.changes.outputs.workflow == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.search == 'true' || needs.changes.outputs.docker == 'true' || needs.changes.outputs.workflow == 'true' }}
     runs-on: self-hosted
     env:
-      DOCKER_CONFIG: /tmp/docker-config
       COMPOSE_FILE_PATH: infra/search/docker-compose.yml
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare Docker config for Colima
+      - name: Apply Docker config from repo
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$DOCKER_CONFIG"
-          printf '{}' > "$DOCKER_CONFIG/config.json"
+          mkdir -p "$HOME/.docker"
+          cp infra/config/docker/config.json "$HOME/.docker/config.json"
 
       - name: Ensure Colima and Docker context
         shell: bash

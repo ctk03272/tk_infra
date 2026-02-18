@@ -70,6 +70,12 @@ jobs:
             exit 1
           fi
 
+      - name: Remove legacy app container name
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker rm -f tk-infra-web >/dev/null 2>&1 || true
+
       - name: Deploy app stack
         shell: bash
         run: |
@@ -120,6 +126,13 @@ jobs:
             echo "Neither docker compose nor docker-compose is available."
             exit 1
           fi
+
+      - name: Remove legacy search container names
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker rm -f tk-infra-opensearch >/dev/null 2>&1 || true
+          docker rm -f tk-infra-opensearch-dashboards >/dev/null 2>&1 || true
 
       - name: Deploy search stack
         shell: bash

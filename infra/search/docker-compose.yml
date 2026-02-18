@@ -3,7 +3,6 @@ name: tk-infra-search
 services:
   opensearch:
     image: opensearchproject/opensearch:2.19.4
-    container_name: tk-infra-opensearch
     restart: unless-stopped
     environment:
       discovery.type: single-node
@@ -24,7 +23,6 @@ services:
 
   dashboards:
     image: opensearchproject/opensearch-dashboards:2.19.4
-    container_name: tk-infra-opensearch-dashboards
     restart: unless-stopped
     depends_on:
       - opensearch

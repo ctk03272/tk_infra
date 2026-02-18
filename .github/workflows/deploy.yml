@@ -34,7 +34,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.app == 'true' || needs.changes.outputs.workflow == 'true' }}
     runs-on: self-hosted
     env:
-      DOCKER_CONFIG: ${{ runner.temp }}/docker-config
+      DOCKER_CONFIG: /tmp/docker-config
       COMPOSE_FILE_PATH: infra/app/docker-compose.yml
     steps:
       - name: Checkout
@@ -86,7 +86,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.search == 'true' || needs.changes.outputs.workflow == 'true' }}
     runs-on: self-hosted
     env:
-      DOCKER_CONFIG: ${{ runner.temp }}/docker-config
+      DOCKER_CONFIG: /tmp/docker-config
       COMPOSE_FILE_PATH: infra/search/docker-compose.yml
     steps:
       - name: Checkout
